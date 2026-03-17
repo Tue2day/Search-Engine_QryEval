@@ -1,0 +1,28 @@
+{
+    "indexPath": "INPUT_DIR/index-cw09",
+    "queryFilePath": "TEST_DIR/HW2-Train-0.qry",
+    "task_1:ranker": {
+        "outputLength": "626",
+        "type": "BM25",
+        "BM25:k_1": "0.95",
+        "BM25:b": "0.65"
+    },
+    "task_2:rewriter": {
+        "type": "prf",
+        "prf:algorithm": "okapi",
+        "prf:expansionQueryFile": "OUTPUT_DIR/HW2-Train-0.qryOut",
+        "prf:numDocs": "10",
+        "prf:numTerms": "8"
+    },
+    "task_3:ranker": {
+        "outputLength": "626",
+        "type": "BM25",
+        "BM25:k_1": "0.95",
+        "BM25:b": "0.65"
+    },
+    "task_4:output": {
+        "type": "trec_eval",
+        "outputPath": "OUTPUT_DIR/HW2-Train-0.teIn",
+        "outputLength": "391"
+    }
+}

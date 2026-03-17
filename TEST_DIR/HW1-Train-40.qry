@@ -1,0 +1,2 @@
+103:#wsum( 0.1 #sum( madam.title cj.title walker.title ) 0.1 #sum( madam.body cj.body walker.body ) 0.1 #sum( madam.url cj.url walker.url ) 0.1 #sum( madam.keywords cj.keywords walker.keywords ) )
+106:#wsum( 0.1 #sum( universal.title animal.title cuts.title reviews.title ) 0.1 #sum( universal.body animal.body cuts.body reviews.body ) 0.1 #sum( universal.url animal.url cuts.url reviews.url ) 0.1 #sum( universal.keywords animal.keywords cuts.keywords reviews.keywords ) )

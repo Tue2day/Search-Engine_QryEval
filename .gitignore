@@ -1,0 +1,11 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Large local index files are required to run experiments locally,
+# but they exceed GitHub's file size limits and should not be committed.
+INPUT_DIR/index-cw09/
+INPUT_DIR/**/write.lock
+
+# Generated experiment outputs
+OUTPUT_DIR/

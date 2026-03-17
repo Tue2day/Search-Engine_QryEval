@@ -1,0 +1,101 @@
+"""The Window/n operator for all retrieval models."""
+
+# Copyright (c) 2026, Carnegie Mellon University.  All Rights Reserved.
+
+from InvList import InvList
+from QryIop import QryIop
+
+class QryIopWindow(QryIop):
+    """The WINDOW/n operator for all retrieval models."""
+
+    # -------------- Methods (alphabetical) ---------------- #
+
+    def __init__(self, distance):
+        """Create an empty WINDOW/n query node with a given window size."""
+        QryIop.__init__(self)		# Inherit from QryIop
+        self.distance = distance
+
+
+    def evaluate(self):
+        """"
+        Evaluate the query operator; the result is an internal inverted
+        list that may be accessed via the internal iterators.
+
+        throws IOException: Error accessing the Lucene index.
+        """
+
+        # Create an empty inverted list.
+        self.invertedList = InvList(self._field)
+
+        if len(self._args) == 0:	# Should not occur if the
+            return			# query optimizer did its job
+
+
+        while True:
+
+            # Find the maximum current docid among all arguments
+            maxDocid = None
+            for q_i in self._args:
+                # If any of the argument inverted lists are depleted, NEAR is exhausted.
+                if not q_i.docIteratorHasMatch(None):
+                    return
+                q_i_docid = q_i.docIteratorGetMatch()
+                if maxDocid is None or q_i_docid > maxDocid:
+                    maxDocid = q_i_docid
+
+            # Advance all arguments to maxDocid
+            isMatchAll = True
+            for q_i in self._args:
+                q_i.docIteratorAdvanceTo(maxDocid)
+                if (not q_i.docIteratorHasMatch(None) or
+                        q_i.docIteratorGetMatch() != maxDocid):
+                    isMatchAll = False
+                    break
+            
+            if not isMatchAll:
+                continue
+
+            # Check for Window condition
+            positions_list = []
+
+            for q_i in self._args:
+                q_i.locIteratorIndex = 0
+            
+            while True:
+                # Check if all arguments have a valid location
+                isValid = True
+                for q_i in self._args:
+                    if not q_i.locIteratorHasMatch():
+                        isValid = False
+                        break
+                if not isValid:
+                    break
+
+                min_pos = None
+                max_pos = None
+                for i, q_i in enumerate(self._args):
+                    q_i_pos = q_i.locIteratorGetMatch()
+                    if min_pos is None or q_i_pos < min_pos:
+                        min_pos = q_i_pos
+                        min_index = i
+                    if max_pos is None or q_i_pos > max_pos:
+                        max_pos = q_i_pos
+                        max_index = i 
+
+                # Check if the positions are within the window size  
+                if (max_pos - min_pos) < self.distance:
+                    positions_list.append(max_pos)
+
+                    # Advance all loc iterators to search for next match
+                    for q_i in self._args:
+                        q_i.locIteratorAdvance()
+                else:
+                    self._args[min_index].locIteratorAdvance()
+                
+            # If any matching positions were found, add them to the inverted list
+            if len(positions_list) > 0:
+                self.invertedList.appendPosting(maxDocid, positions_list)
+            
+            # Advance all doc iterators past maxDocid
+            for q_i in self._args:
+                q_i.docIteratorAdvancePast(maxDocid)
