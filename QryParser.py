@@ -187,6 +187,62 @@ class QryParser:
 
 
     @staticmethod
+    def bowQuery(queryString):
+        """
+        Convert a #SUM/#WSUM query into a bag-of-words query string.
+        If queryString is already a bag-of-words query, return it.
+        """
+
+        queryString = queryString.strip()
+        if queryString == '':
+            return(queryString)
+
+        if not queryString.startswith('#'):
+            return(queryString)
+
+        parts = []
+        token = []
+        depth = 0
+
+        for ch in queryString:
+            if ch == '(':
+                depth += 1
+                continue
+            if ch == ')':
+                depth = max(0, depth - 1)
+                if token:
+                    parts.append(''.join(token))
+                    token = []
+                continue
+            if ch.isspace():
+                if token:
+                    parts.append(''.join(token))
+                    token = []
+                continue
+            token.append(ch)
+
+        if token:
+            parts.append(''.join(token))
+
+        bow_terms = []
+        for part in parts:
+            if part.startswith('#'):
+                continue
+
+            try:
+                float(part)
+                continue
+            except ValueError:
+                pass
+
+            term = part.split('.', 1)[0]
+            if term != '':
+                bow_terms.append(term)
+
+        return(' '.join(bow_terms))
+
+
+    @staticmethod
     def __indexOfBalancingParen(s):
         """
         Get the index of the right parenenthesis that balances the

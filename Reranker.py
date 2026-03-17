@@ -25,11 +25,10 @@ class Reranker:
             raise Exception('Error: Missing parameter type.')
         
         models = {
-            'ltr': RerankWithLtr,
-            'bertrr': RerankWithBERT
+            'ltr': RerankWithLtr
         }
         if parameters['type'].lower() not in models:
-            raise Exception('Error: Unknown type: {parameters["type"]}')
+            raise Exception(f'Error: Unknown type: {parameters["type"]}')
         self._model = models[parameters['type'].lower()](parameters)
 
 
@@ -53,14 +52,17 @@ class Reranker:
             old_ranking = batch[qid]['ranking']
             new_ranking = top_batch[qid]['ranking']
 
+            if not new_ranking:
+                batch[qid]['ranking'] = old_ranking
+                continue
+
             if len(old_ranking) > len(new_ranking):
 
                 # If unchanged scores are >= to reranked scores,
                 # reduce them so that reranked scores are higher.
                 last_reranked = new_ranking[-1][0]
                 first_unchanged = old_ranking[self._rerank_depth][0]
-                score_adjust = max(0.0,
-                                   (first_unchanged + 0.1) - last_reranked)
+                score_adjust = max(0.0, (first_unchanged + 0.1) - last_reranked)
 
                 # Merge the bottom of old_ranking into new_ranking.
                 for i in range(self._rerank_depth, len(old_ranking)):
