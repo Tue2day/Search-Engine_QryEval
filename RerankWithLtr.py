@@ -22,7 +22,7 @@ class RerankWithLtr:
     # -------------- Methods (alphabetical) ---------------- #
 
     def __init__(self, parameters):
-        self._all_feature_ids = list(range(1, 17))
+        self._all_feature_ids = list(range(1, 21))
         self._parameters = parameters
         self._toolkit = parameters.get('ltr:toolkit', 'RankLib')
         self._feature_disable = self._parse_disabled_features(
@@ -68,6 +68,7 @@ class RerankWithLtr:
 
     def _build_feature_dict(self, docid, query_terms):
         features = {}
+        unique_query_terms = list(dict.fromkeys(query_terms))
         if 1 not in self._feature_disable:
             spam_score = Idx.getAttribute('spamScore', docid)
             if spam_score is not None:
@@ -93,7 +94,7 @@ class RerankWithLtr:
         for fid, field in overlap_fields.items():
             if fid in self._feature_disable:
                 continue
-            overlap = self._feature_overlap(docid, field, query_terms)
+            overlap = self._feature_overlap(docid, field, unique_query_terms)
             if overlap is not None:
                 features[fid] = float(overlap)
 
@@ -106,7 +107,7 @@ class RerankWithLtr:
         for fid, field in bm25_fields.items():
             if fid in self._feature_disable:
                 continue
-            score = self._feature_bm25(docid, field, query_terms)
+            score = self._feature_bm25(docid, field, unique_query_terms)
             if score is not None:
                 features[fid] = float(score)
 
@@ -119,9 +120,32 @@ class RerankWithLtr:
         for fid, field in ql_fields.items():
             if fid in self._feature_disable:
                 continue
-            score = self._feature_ql(docid, field, query_terms)
+            score = self._feature_ql(docid, field, unique_query_terms)
             if score is not None:
                 features[fid] = float(score)
+
+        if 17 not in self._feature_disable:
+            score = self._feature_query_term_density(
+                docid, 'body', unique_query_terms)
+            if score is not None:
+                features[17] = float(score)
+
+        if 18 not in self._feature_disable:
+            score = self._feature_adjacent_pair_match(
+                docid, 'body', query_terms)
+            if score is not None:
+                features[18] = float(score)
+
+        if 19 not in self._feature_disable:
+            score = self._feature_cross_field_agreement(features)
+            if score is not None:
+                features[19] = float(score)
+
+        if 20 not in self._feature_disable:
+            score = self._feature_early_lead_match(
+                docid, 'body', unique_query_terms, 100)
+            if score is not None:
+                features[20] = float(score)
 
         return(features)
 
@@ -164,10 +188,8 @@ class RerankWithLtr:
 
 
     def _feature_overlap(self, docid, field, query_terms):
-        term_vector = Idx.getTermVector(docid, field)
-        if (term_vector is None or
-            term_vector.stemsLength() == 0 or
-            term_vector.positionsLength() == 0):
+        term_vector = self._get_nonempty_term_vector(docid, field)
+        if term_vector is None:
             return(None)
 
         return(sum(
@@ -177,10 +199,8 @@ class RerankWithLtr:
 
 
     def _feature_bm25(self, docid, field, query_terms):
-        term_vector = Idx.getTermVector(docid, field)
-        if (term_vector is None or
-            term_vector.stemsLength() == 0 or
-            term_vector.positionsLength() == 0):
+        term_vector = self._get_nonempty_term_vector(docid, field)
+        if term_vector is None:
             return(None)
 
         doc_count = Idx.getDocCount(field)
@@ -211,10 +231,8 @@ class RerankWithLtr:
 
 
     def _feature_ql(self, docid, field, query_terms):
-        term_vector = Idx.getTermVector(docid, field)
-        if (term_vector is None or
-            term_vector.stemsLength() == 0 or
-            term_vector.positionsLength() == 0):
+        term_vector = self._get_nonempty_term_vector(docid, field)
+        if term_vector is None:
             return(None)
 
         if len(query_terms) == 0:
@@ -245,6 +263,118 @@ class RerankWithLtr:
             return(0.0)
 
         return(math.exp(log_prob_sum / len(query_terms)))
+
+
+    def _feature_cross_field_agreement(self, features):
+        bm25_feature_ids = [5, 8, 11, 14]
+        matched_fields = sum(
+            1 for fid in bm25_feature_ids
+            if features.get(fid, 0.0) > 0.0)
+        return(matched_fields / float(len(bm25_feature_ids)))
+
+
+    def _feature_adjacent_pair_match(self, docid, field, query_terms):
+        term_vector = self._get_nonempty_term_vector(docid, field)
+        if term_vector is None:
+            return(None)
+
+        if len(query_terms) < 2:
+            return(0.0)
+
+        positions_by_term = self._positions_by_term(term_vector, set(query_terms))
+        matched_pairs = 0
+        total_pairs = len(query_terms) - 1
+
+        for i in range(total_pairs):
+            first_term = query_terms[i]
+            second_term = query_terms[i + 1]
+            first_positions = positions_by_term.get(first_term, [])
+            second_positions = positions_by_term.get(second_term, [])
+
+            if self._has_adjacent_match(first_positions, second_positions):
+                matched_pairs += 1
+
+        return(matched_pairs / float(total_pairs))
+
+
+    def _feature_early_lead_match(self, docid, field, query_terms, cutoff):
+        term_vector = self._get_nonempty_term_vector(docid, field)
+        if term_vector is None:
+            return(None)
+
+        query_term_set = set(query_terms)
+        if len(query_term_set) == 0:
+            return(0.0)
+
+        lead_terms = set()
+        lead_length = min(term_vector.positionsLength(), cutoff)
+        for position_i in range(lead_length):
+            stem_index = term_vector.stemAt(position_i)
+            stem = term_vector.stemString(stem_index)
+            if stem is not None:
+                lead_terms.add(str(stem))
+
+        return(sum(1 for term in query_term_set if term in lead_terms))
+
+
+    def _feature_query_term_density(self, docid, field, query_terms):
+        term_vector = self._get_nonempty_term_vector(docid, field)
+        if term_vector is None:
+            return(None)
+
+        doc_len = Idx.getFieldLength(field, docid)
+        if doc_len <= 0:
+            return(None)
+
+        total_tf = 0.0
+        for term in query_terms:
+            stem_index = term_vector.indexOfStem(term)
+            if stem_index == -1:
+                continue
+            total_tf += term_vector.stemFreq(stem_index)
+
+        return(total_tf / float(doc_len))
+
+
+    def _get_nonempty_term_vector(self, docid, field):
+        term_vector = Idx.getTermVector(docid, field)
+        if (term_vector is None or
+            term_vector.stemsLength() == 0 or
+            term_vector.positionsLength() == 0):
+            return(None)
+        return(term_vector)
+
+
+    def _has_adjacent_match(self, first_positions, second_positions):
+        i = 0
+        j = 0
+
+        while i < len(first_positions) and j < len(second_positions):
+            if second_positions[j] == first_positions[i] + 1:
+                return(True)
+            if second_positions[j] <= first_positions[i]:
+                j += 1
+            else:
+                i += 1
+
+        return(False)
+
+
+    def _positions_by_term(self, term_vector, query_terms):
+        positions = {term: [] for term in query_terms}
+        if len(positions) == 0:
+            return(positions)
+
+        for position_i in range(term_vector.positionsLength()):
+            stem_index = term_vector.stemAt(position_i)
+            stem = term_vector.stemString(stem_index)
+            if stem is None:
+                continue
+            stem = str(stem)
+            if stem in positions:
+                positions[stem].append(position_i)
+
+        return(positions)
 
 
     def _generate_feature_vectors_for_ranking(self, qid, query_string, ranking):

@@ -24,12 +24,19 @@ class Reranker:
         if 'type' not in parameters:
             raise Exception('Error: Missing parameter type.')
         
-        models = {
-            'ltr': RerankWithLtr
-        }
-        if parameters['type'].lower() not in models:
+        model_type = parameters['type'].lower()
+        if model_type == 'bertrr':
+            from RerankWithBert import RerankWithBert
+            model_class = RerankWithBert
+        else:
+            models = {
+                'ltr': RerankWithLtr
+            }
+            model_class = models.get(model_type)
+
+        if model_class is None:
             raise Exception(f'Error: Unknown type: {parameters["type"]}')
-        self._model = models[parameters['type'].lower()](parameters)
+        self._model = model_class(parameters)
 
 
     def execute(self, batch):

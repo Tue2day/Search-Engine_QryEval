@@ -6,6 +6,8 @@ __pycache__/
 # but they exceed GitHub's file size limits and should not be committed.
 INPUT_DIR/index-cw09/
 INPUT_DIR/**/write.lock
+INPUT_DIR/ms-marco-MiniLM-L-6-v2/
+INPUT_DIR/ms-marco-MiniLM-L-12-v2/
 
 # Generated experiment outputs
 OUTPUT_DIR/
