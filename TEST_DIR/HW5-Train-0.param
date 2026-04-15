@@ -1,0 +1,15 @@
+{
+    "indexPath": "INPUT_DIR/index-cw22b-wp",
+    "queryFilePath": "TEST_DIR/HW5-Train-0.qry",
+    "task_1:ranker": {
+        "outputLength": "100",
+        "type": "dense",
+        "dense:indexPath": "INPUT_DIR/index-cw22b-wp-faiss-b300-Fp",
+        "dense:modelPath": "INPUT_DIR/co-condenser-marco-retriever"
+    },
+    "task_3:output": {
+        "type": "trec_eval",
+        "outputPath": "OUTPUT_DIR/HW5-Train-0.teIn",
+        "outputLength": "1000"
+    }
+}

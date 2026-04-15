@@ -15,6 +15,7 @@ import Util
 from Idx import Idx
 from QryParser import QryParser
 from Ranking import Ranking
+from DenseRanker import DenseRanker
 from RetrievalModelUnrankedBoolean import RetrievalModelUnrankedBoolean
 from RetrievalModelRankedBoolean import RetrievalModelRankedBoolean
 from RetrievalModelBM25 import RetrievalModelBM25
@@ -42,6 +43,8 @@ class Ranker:
 
         if parameters['type'] == 'inRankFile':
             self._inRank_path = parameters['inRankFile:Path']
+        elif parameters['type'] == 'dense':
+            self._model = DenseRanker(parameters)
         elif parameters['type'] == 'UnrankedBoolean':
             self._model = RetrievalModelUnrankedBoolean(parameters)
         elif parameters['type'] == 'RankedBoolean':
@@ -63,6 +66,8 @@ class Ranker:
                           ... }
         """
         if self._model is not None:
+            if isinstance(self._model, DenseRanker):
+                return(self._model.get_rankings(batch))
             return(self.get_rankings_bow(batch))
         elif self._inRank_path is not None:
             for qid, ranking in Util.read_rankings(self._inRank_path).items():

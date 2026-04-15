@@ -7,6 +7,7 @@ and unranked boolean, Indri, QL, BM25).
 # Copyright (c) 2026, Carnegie Mellon University.  All Rights Reserved.
 
 from RerankWithLtr import RerankWithLtr
+from RankFusion import RankFusion
 
 class Reranker:
     """
@@ -30,7 +31,8 @@ class Reranker:
             model_class = RerankWithBert
         else:
             models = {
-                'ltr': RerankWithLtr
+                'ltr': RerankWithLtr,
+                'rankfusion': RankFusion
             }
             model_class = models.get(model_type)
 
@@ -58,6 +60,10 @@ class Reranker:
         for qid in batch:
             old_ranking = batch[qid]['ranking']
             new_ranking = top_batch[qid]['ranking']
+
+            if getattr(self._model, 'replace_ranking', False):
+                batch[qid]['ranking'] = new_ranking
+                continue
 
             if not new_ranking:
                 batch[qid]['ranking'] = old_ranking

@@ -5,9 +5,13 @@ __pycache__/
 # Large local index files are required to run experiments locally,
 # but they exceed GitHub's file size limits and should not be committed.
 INPUT_DIR/index-cw09/
+INPUT_DIR/index-cw22b-wp/
+INPUT_DIR/index-cw22b-wp-faiss-b300-Fp
+INPUT_DIR/co-condenser-marco-retriever/
 INPUT_DIR/**/write.lock
 INPUT_DIR/ms-marco-MiniLM-L-6-v2/
 INPUT_DIR/ms-marco-MiniLM-L-12-v2/
+INPUT_DIR/llm_auth.json
 
 # Generated experiment outputs
 OUTPUT_DIR/

@@ -5,6 +5,7 @@ Access and manage a BERT reranker.
 # Copyright (c) 2026, Carnegie Mellon University.  All Rights Reserved.
 
 from Idx import Idx
+from PassageGenerator import PassageGenerator
 
 
 class RerankWithBert:
@@ -67,7 +68,7 @@ class RerankWithBert:
                                 'ranking': [(score, externalId) ...]}
                           ... }
         """
-        for qid in sorted(batch.keys(), key=int):
+        for qid in sorted(batch.keys(), key=self._qid_sort_key):
             qstring = batch[qid]['qstring']
             reranked = []
 
@@ -95,64 +96,11 @@ class RerankWithBert:
         raise Exception(
             f'Error: Unknown score aggregation {self._score_aggregation}.')
 
-
-    def _build_body_passages(self, body_tokens):
-        if len(body_tokens) == 0:
-            return([[]])
-
-        if self._psg_len <= 0:
-            return([[]])
-
-        passages = []
-        start = 0
-        prev_end = -1
-
-        while start < len(body_tokens) and len(passages) < self._psg_cnt:
-            end = min(start + self._psg_len, len(body_tokens))
-            if end <= prev_end:
-                break
-
-            passages.append(body_tokens[start:end])
-            prev_end = end
-
-            if end >= len(body_tokens):
-                break
-
-            if self._psg_stride <= 0:
-                break
-            start += self._psg_stride
-
-        if len(passages) == 0:
-            return([[]])
-
-        return(passages)
-
-
-    def _build_passage_text(self, title_tokens, body_passage_tokens):
-        parts = []
-
-        if self._max_title_length > 0 and len(title_tokens) > 0:
-            parts.extend(title_tokens[:self._max_title_length])
-
-        parts.extend(body_passage_tokens)
-
-        return(' '.join(parts).strip())
-
-
     def _build_passages(self, title_string, body_string):
-        title_tokens = self._tokenize_text(title_string)
-        body_tokens = self._tokenize_text(body_string)
-
-        passages = []
-        for body_passage_tokens in self._build_body_passages(body_tokens):
-            passage_text = self._build_passage_text(
-                title_tokens, body_passage_tokens)
-            passages.append(passage_text)
-
-        if len(passages) == 0:
-            passages = ['']
-
-        return(passages[:self._psg_cnt])
+        passage_generator = PassageGenerator(
+            self._psg_len, self._psg_stride, self._psg_cnt,
+            self._max_title_length)
+        return(passage_generator.build_passages(title_string, body_string))
 
 
     def _encode_q_psg(self, qstring, passage_string):
@@ -188,12 +136,9 @@ class RerankWithBert:
         with self._torch.no_grad():
             outputs = self._model(**tensors_dict)
             return(outputs.logits.data.item())
-
-
-    def _tokenize_text(self, text):
-        if text is None:
-            return([])
-        text = str(text).strip()
-        if text == '':
-            return([])
-        return(text.split())
+    def _qid_sort_key(self, qid):
+        qid = str(qid)
+        digits = ''.join(ch for ch in qid if ch.isdigit())
+        if digits != '':
+            return(int(digits), qid)
+        return(float('inf'), qid)

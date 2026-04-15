@@ -1,0 +1,33 @@
+{
+    "indexPath": "INPUT_DIR/index-cw22b-wp",
+    "queryFilePath": "EXP_DIR/HW5_EXP1/HW5-Exp-1.3a.qry",
+    "task_1:ranker": {
+        "type": "dense",
+        "dense:indexPath": "INPUT_DIR/index-cw22b-wp-faiss-b300-Fp",
+        "dense:modelPath": "INPUT_DIR/co-condenser-marco-retriever",
+        "outputLength": "1000"
+    },
+    "task_2:output": {
+        "type": "trec_eval",
+        "outputPath": "OUTPUT_DIR/HW5-EXP1/HW5-Exp-1.3a.teIn",
+        "outputLength": "1000"
+    },
+    "task_3:agent": {
+        "type": "rag",
+        "agentDepth": "5",
+        "rag:modelServer": "128.2.204.71/59596",
+        "rag:authPath": "INPUT_DIR/llm_auth.json",
+        "rag:dense:modelPath": "INPUT_DIR/co-condenser-marco-retriever",
+        "rag:psgCnt": "1",
+        "rag:psgLen": "50",
+        "rag:psgStride": "40",
+        "rag:maxTitleLength": "15",
+        "rag:prompt": "1",
+        "rag:promptPath": "OUTPUT_DIR/HW5-EXP1/HW5-Exp-1.3a.promptRag"
+    },
+    "task_4:output": {
+        "type": "triviaqa_evaluation",
+        "outputPath": "OUTPUT_DIR/HW5-EXP1/HW5-Exp-1.3a.qaIn",
+        "outputLength": "1"
+    }
+}

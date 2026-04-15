@@ -8,6 +8,7 @@ import sys
 import Util
 
 from Idx import Idx
+from Agent import Agent
 from Output import Output
 from Ranker import Ranker
 from Reranker import Reranker
@@ -30,6 +31,7 @@ def main ():
 
     # Initialize the index and experiment parameters.
     parameters = readParameterFile()
+    parameters = propagate_shared_parameters(parameters)
     Idx.open(parameters['indexPath'])
     queries = Util.read_queries(parameters['queryFilePath'])
 
@@ -92,6 +94,30 @@ def readParameterFile():
     d = Util.str_to_num(d)
 
     return(d)
+
+
+def propagate_shared_parameters(parameters):
+    """
+    Copy shared dense settings from the dense ranker into later tasks
+    when those tasks omit them. This matches the HW5 guide's expectation
+    that DPR and RAG often share one encoder model.
+    """
+    dense_model_path = None
+    for task_name, task_params in parameters.items():
+        if (task_name.startswith('task_') and
+                task_name.endswith(':ranker') and
+                task_params.get('type') == 'dense'):
+            dense_model_path = task_params.get('dense:modelPath')
+            break
+
+    if dense_model_path is None:
+        return(parameters)
+
+    for task_name, task_params in parameters.items():
+        if task_name.startswith('task_') and task_name.endswith(':agent'):
+            task_params.setdefault('rag:dense:modelPath', dense_model_path)
+
+    return(parameters)
 
 
 # ------------------ Script body --------------------------- #
